@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111827">
+  <title>Mr Plowman's Quad Quest</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
+    * { box-sizing: border-box; }
+    body { font-family: 'Outfit', sans-serif; background: radial-gradient(circle at 15% 10%, #312e81 0, transparent 35%), linear-gradient(135deg,#0f172a,#1e1b4b 55%,#311042); min-height:100vh; }
+    .glass { background:rgba(255,255,255,.075); border:1px solid rgba(255,255,255,.13); backdrop-filter:blur(14px); }
+    .stage-card,.answer-btn { transition:transform .18s ease,border-color .18s ease,background .18s ease; }
+    .stage-card:hover,.answer-btn:hover:not(:disabled) { transform:translateY(-3px); border-color:rgba(196,181,253,.8); }
+    .answer-btn:focus-visible,.stage-card:focus-visible,button:focus-visible { outline:3px solid #fbbf24; outline-offset:3px; }
+    .math { font-family: Georgia,serif; font-variant-numeric: lining-nums; }
+    .hidden-screen { display:none !important; }
+    .feedback-correct { background: rgba(74, 222, 128, 0.1); border-color: #4ade80; }
+    .feedback-retry { background: rgba(251, 191, 36, 0.1); border-color: #fbbf24; }
+    .feedback-wrong { background: rgba(248, 113, 113, 0.1); border-color: #f87171; }
+    @media (prefers-reduced-motion: reduce) { *,*::before,*::after { transition:none !important; animation:none !important; } }
+  </style>
+</head>
+<body class="text-white flex min-h-screen flex-col">
+  <header class="glass sticky top-0 z-10 border-b border-white/10 px-4 py-3">
+    <div class="mx-auto flex max-w-5xl items-center justify-between gap-3">
+      <button type="button" id="home-button" class="flex items-center gap-3 text-left" aria-label="Return to stage selection">
+        <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-purple-600 to-indigo-500 text-lg font-extrabold shadow-lg">mP</span>
+        <span><span class="block text-lg font-extrabold tracking-tight text-purple-100">Mr Plowman's Quad Quest</span><span class="block text-xs text-purple-300/80">Factorising Masterclass</span></span>
+      </button>
+      <div id="header-stats" class="hidden items-center gap-2 sm:gap-4" aria-live="polite">
+        <span id="stage-badge" class="rounded-full border border-purple-400/30 bg-purple-500/20 px-3 py-1 text-xs font-bold text-purple-200">Stage 1</span>
+        <span class="rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-1.5 text-sm"><i class="fa-solid fa-trophy mr-1 text-amber-400"></i><span id="score-display">0</span></span>
+        <span class="rounded-lg border border-amber-400/20 bg-amber-500/10 px-3 py-1.5 text-sm text-amber-300"><i class="fa-solid fa-fire mr-1"></i><span id="streak-display">0</span></span>
+      </div>
+    </div>
+  </header>
+
+  <main class="mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center px-4 py-8">
+    <section id="screen-mode-select" class="space-y-7">
+      <div class="space-y-2 text-center">
+        <p class="text-sm font-bold uppercase tracking-[.25em] text-purple-300">Ready to practise?</p>
+        <h1 class="text-3xl font-extrabold sm:text-4xl">Choose Your Stage</h1>
+        <p class="mx-auto max-w-xl text-sm leading-6 text-slate-300">Pick a stage, factorise each quadratic and build your streak. You get one second attempt per question.</p>
+      </div>
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <button type="button" class="stage-card glass rounded-2xl p-6 text-left" data-stage="1">
+          <span class="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/20 text-xl text-emerald-300"><i class="fa-solid fa-seedling"></i></span>
+          <span class="block text-xl font-extrabold">Stage 1</span>
+          <span class="mt-1 block font-semibold text-emerald-300">Getting started</span>
+          <span class="mt-3 block text-sm leading-5 text-slate-300">x² + bx + c where b and c are positive</span>
+          <span class="mt-5 block text-xs font-bold uppercase tracking-wider text-white/60">x² + bx + c</span>
+        </button>
+        <button type="button" class="stage-card glass rounded-2xl p-6 text-left" data-stage="2">
+          <span class="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-sky-500/20 text-xl text-sky-300"><i class="fa-solid fa-bolt"></i></span>
+          <span class="block text-xl font-extrabold">Stage 2</span>
+          <span class="mt-1 block font-semibold text-sky-300">Signs and patterns</span>
+          <span class="mt-3 block text-sm leading-5 text-slate-300">Negative terms, difference of squares, perfect squares</span>
+          <span class="mt-5 block text-xs font-bold uppercase tracking-wider text-white/60">Spot the structure</span>
+        </button>
+        <button type="button" class="stage-card glass rounded-2xl p-6 text-left" data-stage="3">
+          <span class="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-fuchsia-500/20 text-xl text-fuchsia-300"><i class="fa-solid fa-crown"></i></span>
+          <span class="block text-xl font-extrabold">Stage 3</span>
+          <span class="mt-1 block font-semibold text-fuchsia-300">Advanced</span>
+          <span class="mt-3 block text-sm leading-5 text-slate-300">Coefficient of x² greater than 1</span>
+          <span class="mt-5 block text-xs font-bold uppercase tracking-wider text-white/60">ax² + bx + c</span>
+        </button>
+      </div>
+      <p class="text-center text-xs text-slate-400">10 questions per round · One second attempt per question</p>
+    </section>
+
+    <section id="screen-quiz" class="hidden-screen space-y-6">
+      <div class="flex items-center justify-between gap-3">
+        <div><p class="text-xs font-bold uppercase tracking-widest text-purple-300">Your challenge</p><h2 class="text-2xl font-extrabold">Factorise this quadratic</h2></div>
+        <button type="button" id="change-stage" class="rounded-lg border border-white/20 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-white/10">Change stage</button>
+      </div>
+      <div class="glass rounded-2xl p-5 sm:p-7">
+        <div class="mb-5 flex items-center justify-between text-sm text-slate-300">
+          <span id="question-count">Question 1 of 10</span>
+          <span id="progress-label">0%</span>
+        </div>
+        <div class="mb-7 h-2 overflow-hidden rounded-full bg-slate-700">
+          <div id="progress-bar" class="h-full rounded-full bg-gradient-to-r from-purple-500 to-pink-400" style="width:0%"></div>
+        </div>
+        <div id="question-expression" class="math py-5 text-center text-4xl font-bold tracking-wide sm:text-5xl" aria-label="Quadratic expression">x² + 5x + 6</div>
+        <p class="mb-4 text-center text-sm text-slate-300">Choose the correct factorisation.</p>
+        <div class="mb-4 text-center">
+          <span id="question-category" class="hidden rounded-full border border-sky-300/30 bg-sky-400/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-sky-200"></span>
+        </div>
+        <div class="mb-5 text-center">
+          <button type="button" id="hint-button" class="rounded-lg border border-amber-300/40 bg-amber-400/10 px-4 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-400/20">
+            <i class="fa-regular fa-lightbulb mr-2"></i>Show hint
+          </button>
+          <p id="hint-text" class="mx-auto mt-3 hidden max-w-2xl rounded-xl border border-amber-300/20 bg-amber-400/10 px-4 py-3 text-sm leading-6 text-amber-100" role="status" aria-live="polite"></p>
+        </div>
+        <div id="answer-options" class="grid grid-cols-1 gap-3 sm:grid-cols-2"></div>
+        <div id="feedback" class="mt-5 hidden rounded-xl p-4 text-sm border" role="status" aria-live="polite"></div>
+        <div class="mt-5 flex justify-end">
+          <button type="button" id="next-button" class="hidden rounded-xl bg-purple-600 px-6 py-3 font-bold shadow-lg shadow-purple-900/30 hover:bg-purple-500">
+            Next question <i class="fa-solid fa-arrow-right ml-2"></i>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section id="screen-results" class="hidden-screen glass space-y-5 rounded-2xl p-7 text-center sm:p-10">
+      <div class="text-5xl text-amber-300"><i class="fa-solid fa-trophy"></i></div>
+      <p class="text-xs font-bold uppercase tracking-[.25em] text-purple-300">Round Complete</p>
+      <h2 class="text-3xl font-extrabold">Well done!</h2>
+      <p class="text-slate-300">Here's how you did:</p>
+      <div class="grid grid-cols-2 gap-3 py-3">
+        <div class="rounded-xl bg-white/5 p-4">
+          <div id="final-score" class="text-3xl font-extrabold text-amber-300">0</div>
+          <div class="text-xs text-slate-400">Points earned</div>
+        </div>
+        <div class="rounded-xl bg-white/5 p-4">
+          <div id="final-correct" class="text-3xl font-extrabold text-emerald-300">0/10</div>
+          <div class="text-xs text-slate-400">Correct answers</div>
+        </div>
+      </div>
+      <div class="flex flex-col justify-center gap-3 sm:flex-row">
+        <button type="button" id="play-again" class="rounded-xl bg-purple-600 px-6 py-3 font-bold hover:bg-purple-500">Play this stage again</button>
+        <button type="button" id="back-to-stages" class="rounded-xl border border-white/20 px-6 py-3 font-bold hover:bg-white/10">Choose another stage</button>
+      </div>
+    </section>
+  </main>
+  <footer class="px-4 pb-5 text-center text-xs text-slate-500">Mr Plowman's Quad Quest · Practise, spot patterns, get confident.</footer>
+
+<script>
+(() => {
+  'use strict';
+  const TOTAL_QUESTIONS = 10;
+  const stages = {
+    1: { name: 'Stage 1', description: 'Getting started' },
+    2: { name: 'Stage 2', description: 'Signs and patterns' },
+    3: { name: 'Stage 3', description: 'Advanced' }
+  };
+  const $ = id => document.getElementById(id);
+  let stage = 1, questions = [], questionIndex = 0, score = 0, streak = 0, correctCount = 0;
+  let answered = false, secondChance = false;
+
+  function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+  function nonZero(min, max) { let n = 0; while (n === 0) n = rand(min, max); return n; }
+  function signedTerm(n, suffix = '') {
+    if (n === 0) return '';
+    const sign = n < 0 ? ' − ' : ' + ';
+    const abs = Math.abs(n);
+    return sign + (abs === 1 && suffix ? '' : abs) + suffix;
+  }
+  function expression(a, b, c) {
+    let out = a === 1 ? 'x²' : a === -1 ? '−x²' : `${a}x²`;
+    out += signedTerm(b, 'x') + signedTerm(c);
+    return out;
+  }
+  function bracket(a, b) {
+    const first = a === 1 ? 'x' : a === -1 ? '−x' : `${a}x`;
+    return `(${first}${signedTerm(b)})`;
+  }
+  function factorText(u, v, w, z) {
+    const one = bracket(u, v), two = bracket(w, z);
+    return [one, two].sort().join('');
+  }
+
+  function makeQuestion(stage2Type = null) {
+    let u, v, w, z, a, b, c, factors, category = '';
+    let kind = 'standard';
+
+    if (stage === 2) {
+      const type = stage2Type ?? rand(1, 4);
+      if (type === 1) {
+        const n = rand(2, 9);
+        u = w = 1; v = -n; z = n;
+        category = 'Difference of two squares';
+      } else if (type === 2) {
+        const n = rand(2, 8), sign = Math.random() < 0.5 ? 1 : -1;
+        u = w = 1; v = z = sign * n;
+        category = 'Perfect-square trinomial';
+      } else if (type === 3) {
+        b = nonZero(-18, 18);
+        a = 1; c = 0;
+        factors = `x${bracket(1, b)}`;
+        kind = 'commonX';
+        category = 'Common factor';
+      } else {
+        u = w = 1; v = nonZero(-9, 9); z = nonZero(-9, 9);
+        category = 'Ordinary trinomial';
+      }
+    } else if (stage === 1) {
+      u = w = 1; v = rand(1, 9); z = rand(1, 9);
+    } else {
+      u = rand(2, 4); w = rand(1, 3);
+      v = nonZero(-7, 7); z = nonZero(-7, 7);
+    }
+
+    if (kind !== 'commonX') {
+      a = u * w;
+      b = u * z + w * v;
+      c = v * z;
+      factors = factorText(u, v, w, z);
+    }
+    return { a, b, c, factors, category, kind, u, v, w, z };
+  }
+
+  function parseFactors(str) {
+    const match = str.match(/\((.*?)([+\-]\d+)\)\((.*?)([+\-]\d+)\)/);
+    if (!match) return null;
+    return [parseInt(match[2]), parseInt(match[4])];
+  }
+
+  function analyseChoice(choice, q) {
+    const { a, v, z } = q;
+    if (a !== 1 || q.kind !== 'standard') return { type: 'general' };
+    
+    const correctSum = v + z;
+    const correctProduct = v * z;
+    const chosenNums = parseFactors(choice);
+    
+    if (!chosenNums) return { type: 'general' };
+    const [n1, n2] = chosenNums;
+    const choiceSum = n1 + n2;
+    const choiceProduct = n1 * n2;
+    const sameNumbers = (Math.abs(n1) === Math.abs(v) && Math.abs(n2) === Math.abs(z)) ||
+                        (Math.abs(n1) === Math.abs(z) && Math.abs(n2) === Math.abs(v));
+    
+    if (sameNumbers && choiceProduct === correctProduct && choiceSum !== correctSum) {
+      return { type: 'sign-mixup', sum: correctSum };
+    }
+    if (choiceProduct === correctProduct && choiceSum !== correctSum) {
+      return { type: 'wrong-sum', product: correctProduct };
+    }
+    if (choiceProduct !== correctProduct) {
+      return { type: 'wrong-product', product: correctProduct };
+    }
+    return { type: 'general' };
+  }
+
+  function feedbackForAnalysis(analysis) {
+    switch (analysis.type) {
+      case 'sign-mixup':
+        return `Check that the two numbers add up to ${analysis.sum}.`;
+      case 'wrong-sum':
+        return `The numbers have a product of ${analysis.product} but their sum is not correct. Look for a different factor pair of ${analysis.product}.`;
+      case 'wrong-product':
+        return `Your numbers don't multiply to make ${analysis.product}. Try again.`;
+      default:
+        return 'Have another think — check both the sum and the product!';
+    }
+  }
+
+  function makeOptions(q) {
+    const correct = q.factors;
+    const options = new Set([correct]);
+    if (q.kind === 'commonX') {
+      for (let i = 0; i < 20 && options.size < 4; i++) {
+        const inner = q.b + rand(-5, 5);
+        if (inner !== 0) options.add(`x${bracket(1, inner)}`);
+      }
+      while (options.size < 4) {
+        const n = rand(1, 9);
+        options.add(bracket(1, n) + bracket(1, n + rand(1, 4)));
+      }
+      return [...options].sort(() => Math.random() - 0.5);
+    }
+    
+    const { u, v, w, z, a, b, c } = q;
+    const isMonic = a === 1;
+    
+    // D1: Swap both signs
+    options.add(factorText(u, -v, w, -z));
+    
+    // D2: Swap one sign
+    if (v !== -z) options.add(factorText(u, -v, w, z));
+    if (v !== z) options.add(factorText(u, v, w, -z));
+    
+    // D3: Different pair — same product, different sum (monic only)
+    if (isMonic && c !== 0) {
+      const targetProduct = v * z;
+      const absP = Math.abs(targetProduct);
+      for (let i = -absP; i <= absP && options.size < 4; i++) {
+        if (i === 0) continue;
+        if (targetProduct % i === 0) {
+          const j = targetProduct / i;
+          if (i < j && i !== v && j !== z && (i + j !== b)) {
+            options.add(factorText(1, i, 1, j));
+            break;
+          }
+        }
+      }
+    }
+    
+    // Fill remaining slots if needed
+    let attempts = 0;
+    while (options.size < 4 && attempts++ < 50) {
+      const r1 = nonZero(-9, 9);
+      const r2 = nonZero(-9, 9);
+      const cand = factorText(u === 1 ? 1 : rand(2, 4), r1, w === 1 ? 1 : rand(1, 3), r2);
+      if (cand !== correct) options.add(cand);
+    }
+    
+    return [...options].sort(() => Math.random() - 0.5);
+  }
+
+  function showScreen(screenId) {
+    document.querySelectorAll('section').forEach(s => s.classList.add('hidden-screen'));
+    $(screenId).classList.remove('hidden-screen');
+  }
+
+  function updateProgress() {
+    const percent = Math.round((questionIndex / TOTAL_QUESTIONS) * 100);
+    $('progress-bar').style.width = percent + '%';
+    $('progress-label').textContent = percent + '%';
+    $('question-count').textContent = `Question ${questionIndex + 1} of ${TOTAL_QUESTIONS}`;
+  }
+
+  function renderQuestion() {
+    answered = false;
+    secondChance = false;
+    const q = questions[questionIndex];
+    
+    $('question-expression').textContent = expression(q.a, q.b, q.c);
+    $('question-category').textContent = q.category || '';
+    $('question-category').classList.toggle('hidden', !q.category);
+    $('hint-text').classList.add('hidden');
+    $('hint-button').classList.remove('hidden');
+    $('feedback').classList.add('hidden');
+    $('next-button').classList.add('hidden');
+    updateProgress();
+    
+    const optionsDiv = $('answer-options');
+    optionsDiv.innerHTML = '';
+    
+    makeOptions(q).forEach(opt => {
+      const btn = document.createElement('button');
+      btn.className = 'answer-btn glass p-4 text-center hover:bg-white/10';
+      btn.textContent = opt;
+      btn.dataset.answer = opt;
+      btn.addEventListener('click', () => handleAnswerClick(btn, opt));
+      optionsDiv.appendChild(btn);
+    });
+  }
+
+  function handleAnswerClick(btn, choice) {
+    if (answered) return;
+    const q = questions[questionIndex];
+    const correct = q.factors;
+    const feedback = $('feedback');
+    
+    if (choice === correct) {
+      // ✅ Correct answer
+      answered = true;
+      if (!secondChance) {
+        score += 10 + streak * 2;
+        streak++;
+      } else {
+        score += 5; // Half points for second attempt
+        streak = 0;
+      }
+      correctCount++;
+      
+      feedback.textContent = '✓ Correct! ' + expression(q.a, q.b, q.c) + ' = ' + correct;
+      feedback.className = 'mt-5 rounded-xl p-4 text-sm border feedback-correct';
+      feedback.classList.remove('hidden');
+      
+      // Highlight correct, disable all
+      document.querySelectorAll('.answer-btn').forEach(b => {
+        b.disabled = true;
+        if (b.dataset.answer === correct) {
+          b.classList.add('feedback-correct');
+        }
+      });
+      
+      confetti({ particleCount: 80, spread: 60, origin: { y: 0.6 } });
+      $('next-button').classList.remove('hidden');
+      
+    } else {
+      // ❌ Wrong answer
+      const analysis = analyseChoice(choice, q);
+      const message = feedbackForAnalysis(analysis);
+      
+      if (!secondChance) {
+        // First attempt wrong — give second chance
+        secondChance = true;
+        feedback.textContent = message;
+        feedback.className = 'mt-5 rounded-xl p-4 text-sm border feedback-retry';
+        feedback.classList.remove('hidden');
+        
+        // Clear the clicked button but keep others active
+        btn.blur();
+        btn.classList.remove('feedback-correct', 'feedback-wrong');
+        
+      } else {
+        // Second attempt wrong — reveal answer
+        answered = true;
+        streak = 0;
+        
+        feedback.innerHTML = `✗ Not quite. The correct answer is:<br><strong>${correct}</strong>`;
+        feedback.className = 'mt-5 rounded-xl p-4 text-sm border feedback-wrong';
+        feedback.classList.remove('hidden');
+        
+        // Disable all buttons, show which was correct
+        document.querySelectorAll('.answer-btn').forEach(b => {
+          b.disabled = true;
+          if (b.dataset.answer === correct) {
+            b.classList.add('feedback-correct');
+          }
+        });
+        $('next-button').classList.remove('hidden');
+      }
+    }
+    
+    $('score-display').textContent = score;
+    $('streak-display').textContent = streak;
+  }
+
+  function nextQuestion() {
+    questionIndex++;
+    if (questionIndex >= TOTAL_QUESTIONS) {
+      showResults();
+    } else {
+      renderQuestion();
+    }
+  }
+
+  function showResults() {
+    $('final-score').textContent = score;
+    $('final-correct').textContent = `${correctCount}/${TOTAL_QUESTIONS}`;
+    showScreen('screen-results');
+  }
+
+  function startGame(selectedStage) {
+    stage = selectedStage;
+    questionIndex = 0;
+    score = 0;
+    streak = 0;
+    correctCount = 0;
+    $('stage-badge').textContent = stages[stage].name;
+    $('score-display').textContent = '0';
+    $('streak-display').textContent = '0';
+    $('header-stats').classList.remove('hidden');
+    
+    // Generate all questions
+    questions = [];
+    for (let i = 0; i < TOTAL_QUESTIONS; i++) {
+      questions.push(makeQuestion());
+    }
+    
+    showScreen('screen-quiz');
+    renderQuestion();
+  }
+
+  function showStageSelect() {
+    showScreen('screen-mode-select');
+    $('header-stats').classList.add('hidden');
+  }
+
+  // ---- EVENT LISTENERS ----
+  
+  // Stage selection buttons
+  document.querySelectorAll('[data-stage]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const s = parseInt(btn.dataset.stage);
+      startGame(s);
+    });
+  });
+  
+  // Navigation
+  $('home-button').addEventListener('click', showStageSelect);
+  $('change-stage').addEventListener('click', showStageSelect);
+  $('back-to-stages').addEventListener('click', showStageSelect);
+  $('play-again').addEventListener('click', () => startGame(stage));
+  $('next-button').addEventListener('click', nextQuestion);
+  
+  // Hint button
+  $('hint-button').addEventListener('click', () => {
+    const q = questions[questionIndex];
+    const hintText = $('hint-text');
+    hintText.textContent = q.kind === 'commonX'
+      ? 'Look for a common factor first — what goes into both terms?'
+      : 'Find two numbers that MULTIPLY to make the constant term and ADD to make the middle term.';
+    hintText.classList.remove('hidden');
+    $('hint-button').classList.add('hidden');
+  });
+
+  // Initial view
+  showScreen('screen-mode-select');
+})();
+</script>
+</body>
+</html>
+    
